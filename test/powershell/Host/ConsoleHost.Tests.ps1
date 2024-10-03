@@ -24,6 +24,7 @@ Describe 'minishell for native executables' -Tag 'CI' {
         }
 
         It 'gets the error stream from minishell' {
+            $PSNativeCommandUseErrorActionPreference = $false
             $output = & $powershell -noprofile { Write-Error 'foo' } 2>&1
             ($output | Measure-Object).Count | Should -Be 1
             $output | Should -BeOfType System.Management.Automation.ErrorRecord
@@ -92,6 +93,10 @@ Describe "ConsoleHost unit tests" -tags "Feature" {
     }
 
     It "Clear-Host does not injects data into PowerShell output stream" {
+        if (Test-IsWindowsArm64) {
+            Set-ItResult -Pending -Because "ARM64 runs in non-interactively mode and Clear-Host does not work."
+        }
+
         & { Clear-Host; 'hi' } | Should -BeExactly 'hi'
     }
 
@@ -169,7 +174,7 @@ Describe "ConsoleHost unit tests" -tags "Feature" {
         It "-File should fail for script without .ps1 extension" -Skip:(!$IsWindows) {
             $Filename = 'test.xxx'
             Set-Content -Path $testdrive/$Filename -Value "'hello'"
-            & $powershell -NoProfile -File $testdrive/$Filename > $null
+            & $powershell -NoProfile -File $testdrive/$Filename 2>&1 $null
             $LASTEXITCODE | Should -Be 64
         }
 
@@ -916,6 +921,34 @@ $powershell -c '[System.Management.Automation.Platform]::SelectProductNameForDir
             $out[0] | Should -MatchExactly $expectedPromptPattern
         }
     }
+
+    Context 'CommandWithArgs tests' {
+        It 'Should be able to run a pipeline with arguments using <param>' -TestCases @(
+            @{ param = '-commandwithargs' }
+            @{ param = '-cwa' }
+        ){
+            param($param)
+            $out = pwsh -nologo -noprofile $param '$args | % { "[$_]" }'  '$fun' '@times'
+            $out.Count | Should -Be 2 -Because ($out | Out-String)
+            $out[0] | Should -BeExactly '[$fun]'
+            $out[1] | Should -BeExactly '[@times]'
+        }
+
+        It 'Should be able to handle boolean switch: <param>' -TestCases @(
+            @{ param = '-switch:$true'; expected = 'True'}
+            @{ param = '-switch:$false'; expected = 'False'}
+        ){
+            param($param, $expected)
+            $out = pwsh -nologo -noprofile -cwa 'param([switch]$switch) $switch.IsPresent' $param
+            $out | Should -Be $expected
+        }
+    }
+
+    It 'Errors for invalid ExecutionPolicy string' {
+        $out = pwsh -nologo -noprofile -executionpolicy NonExistingExecutionPolicy -c 'exit 0' 2>&1
+        $out | Should -Not -BeNullOrEmpty
+        $LASTEXITCODE | Should -Be $ExitCodeBadCommandLineParameter
+    }
 }
 
 Describe "WindowStyle argument" -Tag Feature {
@@ -973,6 +1006,10 @@ public enum ShowWindowCommands : int
             @{WindowStyle="Maximized"}  # hidden doesn't work in CI/Server Core
         ) {
         param ($WindowStyle)
+
+        if (Test-IsWindowsArm64) {
+            Set-ItResult -Pending -Because "All windows are showing up as hidden or ARM64"
+        }
 
         try {
             $ps = Start-Process $powershell -ArgumentList "-WindowStyle $WindowStyle -noexit -interactive" -PassThru

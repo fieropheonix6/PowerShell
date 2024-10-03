@@ -797,10 +797,7 @@ namespace System.Management.Automation.Internal
                     return;
                 }
 
-                if (_preparingForDisconnectList.Contains(bcmdTM))
-                {
-                    _preparingForDisconnectList.Remove(bcmdTM);
-                }
+                _preparingForDisconnectList.Remove(bcmdTM);
 
                 if (_preparingForDisconnectList.Count == 0)
                 {
@@ -1430,7 +1427,7 @@ namespace System.Management.Automation.Internal
 
         /// <summary>
         /// This does not ensure that the corresponding session/runspacepool is in connected stated
-        /// Its the caller responsiblity to ensure that this is the case
+        /// It's the caller responsibility to ensure that this is the case
         /// At the protocols layers, this logic is delegated to the transport layer.
         /// WSMan transport ensures that WinRS commands cannot be reconnected when the parent shell is not in connected state.
         /// </summary>

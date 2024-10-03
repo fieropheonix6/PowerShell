@@ -123,6 +123,45 @@ namespace System.Management.Automation
         }
 
         /// <summary>
+        /// Serializes list of objects into PowerShell CliXml.
+        /// </summary>
+        /// <param name="source">The input objects to serialize.</param>
+        /// <param name="depth">The depth of the members to serialize.</param>
+        /// <param name="enumerate">Enumerates input objects and serializes one at a time.</param>
+        /// <returns>The serialized object, as CliXml.</returns>
+        internal static string Serialize(IList<object> source, int depth, bool enumerate)
+        {
+            StringBuilder sb = new();
+
+            XmlWriterSettings xmlSettings = new()
+            {
+                CloseOutput = true,
+                Encoding = Encoding.Unicode,
+                Indent = true,
+                OmitXmlDeclaration = true
+            };
+
+            XmlWriter xw = XmlWriter.Create(sb, xmlSettings);
+            Serializer serializer = new(xw, depth, useDepthFromTypes: true);
+
+            if (enumerate)
+            {
+                foreach (object item in source)
+                {
+                    serializer.Serialize(item);
+                }
+            }
+            else
+            {
+                serializer.Serialize(source);
+            }
+
+            serializer.Done();
+
+            return sb.ToString();
+        }
+
+        /// <summary>
         /// Deserializes PowerShell CliXml into an object.
         /// </summary>
         /// <param name="source">The CliXml the represents the object to deserialize.</param>
@@ -733,7 +772,7 @@ namespace System.Management.Automation
 
         /// <summary>
         /// Gets a new collection of typenames without "Deserialization." prefix
-        /// in the typename. This will allow to map type info/format info of the orignal type
+        /// in the typename. This will allow to map type info/format info of the original type
         /// for deserialized objects.
         /// </summary>
         /// <param name="typeNames"></param>
@@ -1632,7 +1671,7 @@ namespace System.Management.Automation
                 instanceMetadata.Properties.Add(
                     new PSNoteProperty(
                         InternalDeserializer.CimModifiedProperties,
-                        string.Join(" ", namesOfModifiedProperties)));
+                        string.Join(' ', namesOfModifiedProperties)));
             }
         }
 
@@ -2159,7 +2198,10 @@ namespace System.Management.Automation
                     }
 
                     Dbg.Assert(key != null, "Dictionary keys should never be null");
-                    if (key == null) break;
+                    if (key == null)
+                    {
+                        break;
+                    }
 
                     WriteStartElement(SerializationStrings.DictionaryEntryTag);
                     WriteOneObject(key, null, SerializationStrings.DictionaryKey, depth);
@@ -3457,7 +3499,7 @@ namespace System.Management.Automation
                 if ((modifiedPropertiesProperty != null) && (modifiedPropertiesProperty.Value != null))
                 {
                     string modifiedPropertiesString = modifiedPropertiesProperty.Value.ToString();
-                    foreach (string nameOfModifiedProperty in modifiedPropertiesString.Split(Utils.Separators.Space))
+                    foreach (string nameOfModifiedProperty in modifiedPropertiesString.Split(' '))
                     {
                         namesOfModifiedProperties.Add(nameOfModifiedProperty);
                     }
@@ -3988,7 +4030,7 @@ namespace System.Management.Automation
         }
 
         /// <summary>
-        /// Utilitily class for ReadDictionary(), supporting ordered or non-ordered Dictionaty methods.
+        /// Utility class for ReadDictionary(), supporting ordered or non-ordered Dictionary methods.
         /// </summary>
         private class PSDictionary
         {
@@ -4055,7 +4097,7 @@ namespace System.Management.Automation
             // We assume the hash table is a PowerShell hash table and hence uses
             // a case insensitive string comparer.  If we discover a key collision,
             // we'll revert back to the default comparer.
-            
+
             // Find whether original directory was ordered
             bool isOrdered = InternalTypeNames.Count > 0 &&
                 (Deserializer.MaskDeserializationPrefix(InternalTypeNames[0]) == typeof(OrderedDictionary).FullName);
@@ -5119,7 +5161,7 @@ namespace System.Management.Automation
 
     /// <summary>
     /// A class for identifying types which are treated as KnownType by Monad.
-    /// A KnownType is guranteed to be available on machine on which monad is
+    /// A KnownType is guaranteed to be available on machine on which monad is
     /// running.
     /// </summary>
     internal static class KnownTypes
@@ -5907,7 +5949,6 @@ namespace System.Management.Automation
     /// 2) values that can be serialized and deserialized during PowerShell remoting handshake
     ///    (in major-version compatible versions of PowerShell remoting)
     /// </summary>
-    [Serializable]
     public sealed class PSPrimitiveDictionary : Hashtable
     {
         #region Constructors
@@ -5933,10 +5974,7 @@ namespace System.Management.Automation
         public PSPrimitiveDictionary(Hashtable other)
             : base(StringComparer.OrdinalIgnoreCase)
         {
-            if (other == null)
-            {
-                throw new ArgumentNullException(nameof(other));
-            }
+            ArgumentNullException.ThrowIfNull(other);
 
             foreach (DictionaryEntry entry in other)
             {
@@ -6008,7 +6046,7 @@ namespace System.Management.Automation
                 typeof(PSPrimitiveDictionary)
             };
 
-        private void VerifyValue(object value)
+        private static void VerifyValue(object value)
         {
             // null is a primitive type
             if (value == null)
@@ -6066,7 +6104,7 @@ namespace System.Management.Automation
         public override void Add(object key, object value)
         {
             string keyAsString = VerifyKey(key);
-            this.VerifyValue(value);
+            VerifyValue(value);
             base.Add(keyAsString, value);
         }
 
@@ -6094,7 +6132,7 @@ namespace System.Management.Automation
             set
             {
                 string keyAsString = VerifyKey(key);
-                this.VerifyValue(value);
+                VerifyValue(value);
                 base[keyAsString] = value;
             }
         }
@@ -6122,7 +6160,7 @@ namespace System.Management.Automation
 
             set
             {
-                this.VerifyValue(value);
+                VerifyValue(value);
                 base[key] = value;
             }
         }
@@ -6526,7 +6564,7 @@ namespace System.Management.Automation
 
         /// <summary>
         /// If originalHash contains PSVersionTable, then just returns the Cloned copy of
-        /// the original hash. Othewise, creates a clone copy and add PSVersionInfo.GetPSVersionTable
+        /// the original hash. Otherwise, creates a clone copy and add PSVersionInfo.GetPSVersionTable
         /// to the clone and returns.
         /// </summary>
         /// <param name="originalHash"></param>
@@ -6628,7 +6666,6 @@ namespace Microsoft.PowerShell
     ///       - PropertySerializationSet=<empty>
     ///     - TargetTypeForDeserialization=DeserializingTypeConverter
     ///   - Add a field of that type in unit tests / S.M.A.Test.SerializationTest+RehydratedType
-    ///     (testsrc\admintest\monad\DRT\engine\UnitTests\SerializationTest.cs)
     /// -->
     public sealed class DeserializingTypeConverter : PSTypeConverter
     {
@@ -7255,7 +7292,9 @@ namespace Microsoft.PowerShell
         private static System.Security.Cryptography.X509Certificates.X509Certificate2 RehydrateX509Certificate2(PSObject pso)
         {
             byte[] rawData = GetPropertyValue<byte[]>(pso, "RawData");
+            #pragma warning disable SYSLIB0057
             return new System.Security.Cryptography.X509Certificates.X509Certificate2(rawData);
+            #pragma warning restore SYSLIB0057
         }
 
         private static System.Security.Cryptography.X509Certificates.X500DistinguishedName RehydrateX500DistinguishedName(PSObject pso)

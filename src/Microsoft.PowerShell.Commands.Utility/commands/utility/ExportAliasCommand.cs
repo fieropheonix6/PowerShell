@@ -21,7 +21,7 @@ namespace Microsoft.PowerShell.Commands
         Csv,
 
         /// <summary>
-        /// Aliases will be exported as an MSH script.
+        /// Aliases will be exported as a script.
         /// </summary>
         Script
     }
@@ -117,7 +117,7 @@ namespace Microsoft.PowerShell.Commands
         /// <summary>
         /// Property that sets append parameter.
         /// </summary>
-        [Parameter()]
+        [Parameter]
         public SwitchParameter Append
         {
             get
@@ -136,7 +136,7 @@ namespace Microsoft.PowerShell.Commands
         /// <summary>
         /// Property that sets force parameter.
         /// </summary>
-        [Parameter()]
+        [Parameter]
         public SwitchParameter Force
         {
             get
@@ -155,7 +155,7 @@ namespace Microsoft.PowerShell.Commands
         /// <summary>
         /// Property that prevents file overwrite.
         /// </summary>
-        [Parameter()]
+        [Parameter]
         [Alias("NoOverwrite")]
         public SwitchParameter NoClobber
         {
@@ -184,6 +184,7 @@ namespace Microsoft.PowerShell.Commands
         /// which scope the aliases are retrieved from.
         /// </summary>
         [Parameter]
+        [ArgumentCompleter(typeof(ScopeArgumentCompleter))]
         public string Scope { get; set; }
 
         #endregion Parameters
